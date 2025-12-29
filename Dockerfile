@@ -25,10 +25,12 @@ RUN python -m piper.download_voices en_US-lessac-medium --download-dir "$PIPER_V
 # Copy application code
 COPY server.py .
 
-EXPOSE 8000
+# Default port (can be overridden by Coolify)
+ENV PORT=8000
+EXPOSE $PORT
 
-# Healthcheck using curl
+# Healthcheck using curl (uses PORT env var)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s \
-  CMD curl -f http://localhost:8000/voices || exit 1
+  CMD curl -f http://localhost:${PORT}/voices || exit 1
 
 CMD ["python", "server.py"]
