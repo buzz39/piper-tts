@@ -1,22 +1,27 @@
+
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install Piper HTTP
-RUN pip install --no-cache-dir piper-tts[http]
+# Install system dependencies if any (none strictly needed for minimal piper, but good practice)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Optional: download a default voice at build time (can be overridden)
-RUN python -m piper.download_voices en_US-lessac-medium
+# Copy requirements first to leverage cache
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Configurable via env
-ENV PIPER_VOICE=en_US-lessac-medium
-ENV PIPER_DATA_DIR=/app/voices
+# Create voices directory
+ENV PIPER_VOICE_DIR=/app/voices
+RUN mkdir -p "$PIPER_VOICE_DIR"
 
-# Create entrypoint script
-RUN mkdir -p /app
-COPY docker-entrypoint.sh /app/docker-entrypoint.sh
-RUN chmod +x /app/docker-entrypoint.sh
+# Download default voice into the voices directory
+RUN python -m piper.download_voices en_US-lessac-medium --download-dir "$PIPER_VOICE_DIR"
 
-EXPOSE 5000
+# Copy application code
+COPY server.py .
 
-ENTRYPOINT ["/app/docker-entrypoint.sh"]
+EXPOSE 8000
+
+CMD ["python", "server.py"]
